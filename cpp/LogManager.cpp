@@ -184,6 +184,33 @@ void LogManager::writeLine(int level, const QString &category, const QString &me
         m_previewTimer.start();
 }
 
+void LogManager::writeFatalLine(int level, const QString &category, const QString &message)
+{
+    // 致命消息可能来自任意线程，且紧接着就会 abort()：
+    // 不能走队列（队列永远不会执行），也不能 emit QML 预览信号（跨线程会二次崩溃）。
+    // 这里用独立的 QFile 句柄直接追加并刷盘，主线程持有的 m_file 不参与。
+    const QString line = QStringLiteral("[%1] [%2]%3 %4")
+                             .arg(timestamp(),
+                                  levelLabel(level),
+                                  category.isEmpty()
+                                      ? QString()
+                                      : QStringLiteral(" [%1]").arg(category),
+                                  message);
+
+    const QString path = m_logDir + QStringLiteral("/QueMusic_")
+                         + QDate::currentDate().toString(QStringLiteral("yyyyMMdd"))
+                         + QStringLiteral(".log");
+
+    QDir().mkpath(m_logDir);
+    QFile fatalFile(path);
+    if (!fatalFile.open(QIODevice::WriteOnly | QIODevice::Append))
+        return;
+    fatalFile.write(line.toUtf8());
+    fatalFile.write("\n");
+    fatalFile.flush();
+    fatalFile.close();
+}
+
 void LogManager::ensureLogFile()
 {
     const QDate day = QDate::currentDate();
@@ -303,6 +330,9 @@ void LogManager::messageHandler(QtMsgType type, const QMessageLogContext &contex
     // 文件写入统一在主线程执行，避免跨线程访问 QFile / QML 预览的竞态
     if (QThread::currentThread() == self->thread()) {
         self->writeLine(level, cat, msg);
+    } else if (type == QtFatalMsg) {
+        // 致命消息不能排队：abort() 之后队列永远不会执行，整条日志会丢失
+        self->writeFatalLine(level, cat, msg);
     } else {
         QMetaObject::invokeMethod(self, [self, level, cat, msg]() {
             // 排到这条时单例可能已析构（析构里清了 s_instance），不能再解引用

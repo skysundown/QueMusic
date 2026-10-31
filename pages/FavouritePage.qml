@@ -398,7 +398,7 @@ Item {
                     Playback.playItem({ name: e.title, path: e.path, songer: e.artist, source: e.source })
                 }
                 // 记录列表有专属菜单项（移除记录），其余动作仍走内置实现
-                menuHandler: function(choice: int, index: int): bool {
+                menuHandler: function(choice, index) {
                     const e = Playback.history.get(index)
                     if (choice === 0) { history.addToQueue(e); return true }
                     if (choice === 1) { history.toggleFav(e); return true }

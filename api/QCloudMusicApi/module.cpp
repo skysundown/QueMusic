@@ -344,8 +344,15 @@ QVariantMap Api::artist_follow_count(QVariantMap query) {
     initial 取值 a-z/A-Z
 */
 QVariantMap Api::artist_list(QVariantMap query) {
+    // initial 未传或为空时按 0（热门/其他）处理。
+    // 原写法 query.value("initial", "\0").toString()[0] 会对空字符串取 [0]，
+    // Debug 版触发 QString 越界断言（qstring.h:1230）直接 abort
+    const QString initial = query.value("initial").toString().trimmed();
+    const quint16 initialCode = initial.isEmpty()
+        ? quint16(0)
+        : quint16(initial.at(0).toUpper().unicode());
     const QVariantMap data{
-        { "initial", (quint16)((query.value("initial", "\0").toString()[0]).toUpper()).unicode() },
+        { "initial", initialCode },
         { "offset", query.value("offset", 0) },
         { "limit", query.value("limit", 30) },
         { "total", true },

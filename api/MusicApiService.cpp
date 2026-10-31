@@ -1132,7 +1132,8 @@ void MusicApiService::handleResult(const QString &action, const QVariant &data, 
     if (action != QLatin1String("getLyricInfo") && !prefetch)
         endRequest();
 
-    const bool requestFailed = message.contains(QStringLiteral("error"));
+    // error 键存在但值为 0 表示“无错误”（酷狗 getSongInfo 响应自带 "error":0），不能当成失败
+    const bool requestFailed = message.value(QStringLiteral("error"), 0).toInt() != 0;
     if (requestFailed) {
         qWarning() << "[api] 请求失败:" << action
                    << "error:" << message.value(QStringLiteral("error")).toInt()
@@ -1338,7 +1339,8 @@ void MusicApiService::handleMusicInfo(const QVariantMap &d, int source)
     }
 
     if (playUrl.isEmpty()) {
-        const bool networkFailed = d.contains(QStringLiteral("error"));
+        // 同 handleResult：error 为 0 只是“无错误”，真正的网络失败是 error != 0
+        const bool networkFailed = d.value(QStringLiteral("error"), 0).toInt() != 0;
         const QString reason = d.value(QStringLiteral("errReason")).toString();
         const bool kugouNotLoggedIn = source == kSourceKugou && m_account
                                       && !m_account->isKugouLoggedIn();

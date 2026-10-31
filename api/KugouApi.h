@@ -74,6 +74,8 @@ private:
     using Callback = std::function<void(const QJsonObject &)>;
     void get(const QString &url, const Callback &cb);
     void getLite(const QString &url, const Callback &cb);
+    // 按顺序尝试多个镜像地址，传输层失败（连接被重置等）时自动切下一个
+    void getWithMirrors(const QStringList &urls, const Callback &cb);
 
     QString cookieValue(const QStringList &keys) const;
 

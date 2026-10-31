@@ -484,7 +484,7 @@ Item {
                         // 检测防止动画乱跑，检测稳定即融合
                         if(ty - lyricItem.standY - fixedHAnime.to === 0) {
                             const nowY = lyricItem.standY;
-                            lyricItem.standY = Qt.binding(function(): real { return (lyricContent.fixedH + nowY) });
+                            lyricItem.standY = Qt.binding(function(){ return (lyricContent.fixedH + nowY) });
                             return;
                         } else {
                             durationMs = 0;
@@ -492,7 +492,7 @@ Item {
                     } else if(d > 7) {
                         if(ty - lyricItem.standY - fixedHAnime.to === 0) {
                             const nowY = lyricItem.standY;
-                            lyricItem.standY = Qt.binding(function(): real { return (lyricContent.finalH + nowY) });
+                            lyricItem.standY = Qt.binding(function(){ return (lyricContent.finalH + nowY) });
                             return;
                         } else {
                             durationMs = 460;

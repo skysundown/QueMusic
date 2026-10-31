@@ -456,6 +456,25 @@ void KugouApi::getLite(const QString &url, const Callback &cb)
                  headers);
 }
 
+void KugouApi::getWithMirrors(const QStringList &urls, const Callback &cb)
+{
+    if (urls.isEmpty()) {
+        cb(QJsonObject());
+        return;
+    }
+    const QStringList rest = urls.mid(1);
+    get(urls.first(), [this, rest, cb](const QJsonObject &json) {
+        const bool transportFailed = json.value(QStringLiteral("error")).toInt() != 0;
+        if (transportFailed && !rest.isEmpty()) {
+            qWarning() << "[kugou] 取址失败，切换镜像:"
+                       << QUrl(rest.first()).host();
+            getWithMirrors(rest, cb);
+            return;
+        }
+        cb(json);
+    });
+}
+
 QString KugouApi::decodeKrc(const QByteArray &base64)
 {
     QByteArray bytes = QByteArray::fromBase64(base64);
@@ -605,9 +624,25 @@ void KugouApi::searchSongs(const QString &keyword, int type, int page, int pageS
     } else {
         q.addQueryItem(QStringLiteral("format"), QStringLiteral("json"));
     }
-    url.setQuery(q);
+    // mobilecdn 的部分边缘节点会直接重置连接（Recv failure: Connection was reset），
+    // 歌曲搜索按顺序回退到同接口的其他镜像
+    QStringList bases;
+    if (type == 0) {
+        bases << QStringLiteral("http://mobilecdn.kugou.com/api/v3/search/song")
+              << QStringLiteral("http://mobiles.kugou.com/api/v3/search/song")
+              << QStringLiteral("http://msearchcdn.kugou.com/api/v3/search/song");
+    } else {
+        bases << url.toString();
+    }
+    QStringList candidates;
+    candidates.reserve(bases.size());
+    for (const QString &base : bases) {
+        QUrl u(base);
+        u.setQuery(q);
+        candidates << u.toString();
+    }
 
-    get(url.toString(), [this, type](const QJsonObject &json) {
+    getWithMirrors(candidates, [this, type](const QJsonObject &json) {
         const QJsonArray arr = json.value(QStringLiteral("data")).toObject()
                                    .value(QStringLiteral("info")).toArray();
         QVariantList info;
@@ -1185,7 +1220,9 @@ void KugouApi::requestPlayMeta(const QString &hash, int type, const QSharedPoint
                         : d.value(QStringLiteral("duration")).toDouble());
         data.insert(QStringLiteral("fileName"), fileName);
 
-        if (json.contains(QStringLiteral("error")))
+        // 酷狗响应自带 "error":0 表示“无错误”，只有非 0 才是真的传输失败，
+        // 否则会把“无地址（VIP/版权限制）”误判成网络失败
+        if (json.value(QStringLiteral("error")).toInt() != 0)
             data.insert(QStringLiteral("error"), json.value(QStringLiteral("error")));
 
         st->meta = data;

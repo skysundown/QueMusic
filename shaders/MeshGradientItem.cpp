@@ -492,6 +492,12 @@ QSGNode *MeshGradientItem::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         node->setFlag(QSGNode::OwnsGeometry, true);
         node->setFlag(QSGNode::OwnsMaterial, true);
         node->setMaterial(new BackgroundMaterial(m_algorithm));
+        // Qt6 Debug 版在 appendChildNode 时会断言 QSGGeometryNode 必须已经有 geometry，
+        // 所以先按当前尺寸建一份占位几何体，真实尺寸在第 527 行按需重建
+        node->setGeometry(m_algorithm == 0
+                              ? makeQuadGeometry()
+                              : makeWarpGeometry(float(qMax(1.0, width())),
+                                                 float(qMax(1.0, height()))));
         root->appendChildNode(node);
         root->current = node;
         m_geoSize = QSizeF();

@@ -49,6 +49,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/taglib/taglib/mpeg/id3v2/frames
 )
 
+if(MINGW)
+    add_compile_options(-Wa,-mbig-obj)
+endif()
+
 # 预编译 Qt 主头文件，降低全量编译时间
 target_precompile_headers(${PROJECT_NAME} PRIVATE
     <QtCore/QtCore>

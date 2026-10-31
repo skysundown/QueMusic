@@ -89,6 +89,8 @@ signals:
 private:
     static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
     void writeLine(int level, const QString &category, const QString &message);
+    // 致命消息专用：可能在任意线程产生且随后立刻 abort()，必须同步落盘
+    void writeFatalLine(int level, const QString &category, const QString &message);
     void ensureLogFile();
     // 重建日志预览串并通知 QML。多条日志到达时会被 QTimer 合并，避免每条日志都拼接数百行。
     void refreshPreview();
